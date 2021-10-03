@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
+using ProjectEuler.DataValidators;
 
 namespace ProjectEuler.Problems
 {
@@ -71,7 +67,7 @@ namespace ProjectEuler.Problems
             for (long i = 1; i < number; i++)
             {
                 // Number must be divisible by the number and be a prime number
-                if (number % i != 0 || !await IsNumberPrime(i)) continue;
+                if (number % i != 0 || !await PrimeNumberValidator.IsNumberPrime(i)) continue;
 
                 primeNumberFactors.Add(i);
 
@@ -83,85 +79,6 @@ namespace ProjectEuler.Problems
             }
 
             return largestPrimeNumber;
-        }
-
-        public static async Task<bool> IsNumberPrime(long number)
-        {
-            if (number == 1 || number == 0) return false;
-            if (number == 2 || number == 5) return true;
-
-            if (number % 2 == 0 || number % 5 == 0)
-            {
-                Debug.WriteLine("Number is not prime because it is divisible by 2 or 5");
-                return false;
-            }
-
-            // The only way this number is a prime number at this point is if it is divisible by numbers ending with 1, 3, 7, and 9.
-            var squareRootValue = Math.Ceiling(Math.Sqrt(number));
-
-            List<Task<bool>> primeTasks = new List<Task<bool>>(4);
-            int[] lowestPrimeNumbers = {11, 3, 7, 9};
-            var cancellationToken = new CancellationTokenSource();
-            var cancelToken = cancellationToken.Token;
-
-            try
-            {
-                foreach (var endingPrimeNumber in lowestPrimeNumbers)
-                {
-                    primeTasks.Add(PrimeNumberTask(squareRootValue, endingPrimeNumber, number, cancellationToken.Token));
-                }
-
-                var completedTask = Task.WhenAny(primeTasks);
-
-                //cancellationToken.Cancel();
-                if (!completedTask.Result.Result)
-                {
-                    cancellationToken.Cancel();
-                    return false;
-                }
-
-
-                return true;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                //throw;
-                return false;
-            }
-
-        }
-
-        private static Task<bool> PrimeNumberTask(double squareRootValue, long startNumber, long primeNumberTest, CancellationToken token)
-        {
-
-            return Task.Factory.StartNew(() =>
-            {
-                try
-                {
-                    for (var i = startNumber; i <= squareRootValue; i += 10)
-                    {
-                        //token.ThrowIfCancellationRequested();
-
-                        if (primeNumberTest % i == 0)
-                        {
-                            Debug.WriteLine("{0} is not a prime number because it is divisible by {1}.  Current Thread {2}", primeNumberTest, i, Thread.CurrentThread.ManagedThreadId);
-
-                            return false;
-                        }
-                    }
-
-                    return true;
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e);
-                    return false;
-                }
-
-
-
-            }, token);
         }
     }
 
@@ -233,20 +150,80 @@ namespace ProjectEuler.Problems
 
     public class Problem07
     {
-        public static async Task<long> FindPrimeNumber(int sequenceNumber)
+        public static async Task<long> FindNthPrimeNumber(int sequenceNumber)
         {
-            int currentSequence = 1;
+            int currentSequence = 0;
             long primeNumberTest = 1;
-            while (currentSequence < sequenceNumber)
+
+            while (true)
             {
-                if (await Problem03.IsNumberPrime(primeNumberTest))
+                if (await PrimeNumberValidator.IsNumberPrime(primeNumberTest))
                 {
                     currentSequence++;
                 }
-                primeNumberTest++;
+
+                if (currentSequence >= sequenceNumber) break;
+                primeNumberTest += primeNumberTest > 2 ? 2 : 1;
             }
 
             return primeNumberTest;
         } 
+    }
+
+    public class Problem08
+    {
+        public static long LargestProductInASeries(int numberOfAdjacentNumbers, string numbers)
+        {
+            long largestProduct = 0;
+            for (int i = 0; i < numbers.Length; i++)
+            {
+                // n-'0' converts number to int
+                var numberTest = numbers.Skip(i).Take(numberOfAdjacentNumbers).Select(n => long.Parse(n.ToString()));
+                long product = numberTest.Aggregate<long, long>(1, (total, number) => total * number);
+                if (product > largestProduct) largestProduct = product;
+            }
+
+            return largestProduct;
+        }
+    }
+
+    public class Problem09
+    {
+        public static long PythagoreanTriplet(int targetSum)
+        {
+            for (int a = 1; a < targetSum; a++)
+            {
+                for (int b = 1; b < targetSum; b++)
+                {
+                    for (int c = 1; c < targetSum; c++)
+                    {
+                        if (a * a + b * b == c * c && (a + b + c == targetSum))
+                        {
+                            return a * b * c;
+                        }
+                    }
+                }
+            }
+
+            return 0;
+        }
+    }
+
+    public class Problem10
+    {
+        public static async Task<long> SumOfPrimes(long primeNumbersBelowNumber)
+        {
+            long currentNumber = 1;
+            List<long> primeNumbers = new List<long>();
+            while (currentNumber < primeNumbersBelowNumber)
+            {
+                if (await PrimeNumberValidator.IsNumberPrime(currentNumber))
+                {
+                    primeNumbers.Add(currentNumber);
+                }
+                currentNumber += currentNumber > 2 ? 2 : 1;
+            }
+            return primeNumbers.Sum();
+        }
     }
 }
